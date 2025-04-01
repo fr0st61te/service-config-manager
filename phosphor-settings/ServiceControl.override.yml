@@ -1,0 +1,19 @@
+---
+/xyz/openbmc_project/control/service/IPMINET:
+    - Interface: xyz.openbmc_project.Control.Service.Protocol
+      Properties:
+        Units:
+          Default: >
+            {"phosphor-ipmi-net@eth1.socket","phosphor-ipmi-net@eth1.service","phosphor-ipmi-net@eth0.socket","phosphor-ipmi-net@eth0.service"}
+        Enabled:
+          Default: 'true'
+
+
+/xyz/openbmc_project/control/service/SSH:
+    - Interface: xyz.openbmc_project.Control.Service.Protocol
+      Properties:
+        Units:
+          Default: >
+            {"dropbear.socket"}
+        Enabled:
+          Default: 'true'

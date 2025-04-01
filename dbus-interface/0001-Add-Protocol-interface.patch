@@ -1,0 +1,80 @@
+From 0d2bbc1d6aa01b5fecc224615749ebd5c0951106 Mon Sep 17 00:00:00 2001
+From: Ivan Mikhaylov <fr0st61te@gmail.com>
+Date: Wed, 19 Feb 2025 15:38:55 +0000
+Subject: [PATCH] Add Protocol interface
+
+Add the protocol interface which contains status of protocol enablement
+and units related to protocol.
+
+Signed-off-by: Ivan Mikhaylov <fr0st61te@gmail.com>
+---
+ .../Control/Service/Protocol/meson.build           | 14 ++++++++++++++
+ .../openbmc_project/Control/Service/meson.build    | 14 ++++++++++++++
+ .../Control/Service/Protocol.interface.yaml        | 12 ++++++++++++
+ 3 files changed, 40 insertions(+)
+ create mode 100644 gen/xyz/openbmc_project/Control/Service/Protocol/meson.build
+ create mode 100644 yaml/xyz/openbmc_project/Control/Service/Protocol.interface.yaml
+
+diff --git a/gen/xyz/openbmc_project/Control/Service/Protocol/meson.build b/gen/xyz/openbmc_project/Control/Service/Protocol/meson.build
+new file mode 100644
+index 00000000..68a0bc5b
+--- /dev/null
++++ b/gen/xyz/openbmc_project/Control/Service/Protocol/meson.build
+@@ -0,0 +1,14 @@
++# Generated file; do not modify.
++generated_sources += custom_target(
++    'xyz/openbmc_project/Control/Service/Protocol__cpp'.underscorify(),
++    input: [ '../../../../../../yaml/xyz/openbmc_project/Control/Service/Protocol.interface.yaml',  ],
++    output: [ 'common.hpp', 'server.cpp', 'server.hpp', 'aserver.hpp', 'client.hpp',  ],
++    depend_files: sdbusplusplus_depfiles,
++    command: [
++        sdbuspp_gen_meson_prog, '--command', 'cpp',
++        '--output', meson.current_build_dir(),
++        '--tool', sdbusplusplus_prog,
++        '--directory', meson.current_source_dir() / '../../../../../../yaml',
++        'xyz/openbmc_project/Control/Service/Protocol',
++    ],
++)
+diff --git a/gen/xyz/openbmc_project/Control/Service/meson.build b/gen/xyz/openbmc_project/Control/Service/meson.build
+index 39b3ed69..256dcea9 100644
+--- a/gen/xyz/openbmc_project/Control/Service/meson.build
++++ b/gen/xyz/openbmc_project/Control/Service/meson.build
+@@ -29,3 +29,17 @@ generated_others += custom_target(
+     ],
+ )
+ 
++subdir('Protocol')
++generated_others += custom_target(
++    'xyz/openbmc_project/Control/Service/Protocol__markdown'.underscorify(),
++    input: [ '../../../../../yaml/xyz/openbmc_project/Control/Service/Protocol.interface.yaml',  ],
++    output: [ 'Protocol.md' ],
++    depend_files: sdbusplusplus_depfiles,
++    command: [
++        sdbuspp_gen_meson_prog, '--command', 'markdown',
++        '--output', meson.current_build_dir(),
++        '--tool', sdbusplusplus_prog,
++        '--directory', meson.current_source_dir() / '../../../../../yaml',
++        'xyz/openbmc_project/Control/Service/Protocol',
++    ],
++)
+diff --git a/yaml/xyz/openbmc_project/Control/Service/Protocol.interface.yaml b/yaml/xyz/openbmc_project/Control/Service/Protocol.interface.yaml
+new file mode 100644
+index 00000000..c7a9eb37
+--- /dev/null
++++ b/yaml/xyz/openbmc_project/Control/Service/Protocol.interface.yaml
+@@ -0,0 +1,12 @@
++description: >
++    Implement to provide control of protocol services such as IPMI/SSH/etc.
++properties:
++    - name: Enabled
++      type: boolean
++      default: 'true'
++      description: >
++        The enablement status of protocol.
++    - name: Units
++      type: array[string]
++      description: >
++        Units related to targeted protocol/group of services.
+-- 
+2.34.1
+
