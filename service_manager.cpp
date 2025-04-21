@@ -320,7 +320,12 @@ std::list<Service> ServiceManager::getServices()
             auto enabled = getPropertySync<bool>(
                 systemBus, settingsName, protocolPaths[protocol].c_str(),
                 settingsInterface, "Enabled");
-            _services.emplace_back(units, enabled, protocol);
+
+            auto masked = getPropertySync<bool>(systemBus, settingsName,
+                                                protocolPaths[protocol].c_str(),
+                                                settingsInterface, "Masked");
+
+            _services.emplace_back(units, enabled, masked, protocol);
         }
         catch (const std::exception& e)
         {
@@ -336,6 +341,12 @@ ServiceManager::ServiceManager()
     services = getServices();
     for (auto& serv : services)
     {
+        if (serv.isMasked())
+        {
+            serv.masked(true);
+            continue;
+        }
+
         if (serv.isEnabled())
         {
             serv.enabled(true);

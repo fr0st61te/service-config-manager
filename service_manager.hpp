@@ -86,12 +86,12 @@ class Service : public Base
 {
   public:
     Service(std::vector<std::string> _unitNames, bool _sbEnabled,
-            std::string _protocol) :
+            bool _sbMasked, std::string _protocol) :
 
         Base(static_cast<sdbusplus::bus_t&>(*systemBus),
              (std::string(serviceManagerBasePath) + "/" + _protocol).c_str()),
         unitNames(std::move(_unitNames)), sbEnabled(_sbEnabled),
-        protocol(std::move(_protocol))
+        sbMasked(_sbMasked), protocol(std::move(_protocol))
     {}
 
     Service() = delete;
@@ -106,6 +106,11 @@ class Service : public Base
     bool enabled(bool value) override;
     bool running(bool value) override;
 
+    bool isMasked()
+    {
+        return sbMasked;
+    }
+
     bool isEnabled()
     {
         return sbEnabled;
@@ -116,6 +121,7 @@ class Service : public Base
   private:
     std::vector<std::string> unitNames;
     bool sbEnabled;
+    bool sbMasked;
     std::string protocol;
     std::shared_ptr<sdbusplus::asio::dbus_interface> attributesIface;
 
