@@ -69,8 +69,8 @@ using Units = std::vector<std::string>;
 
 template <typename T>
 T getPropertySync(std::shared_ptr<sdbusplus::asio::connection> bus,
-              const char* objectName, const char* objectPath,
-              const char* objectIntf, const char* propertyName)
+                  const char* objectName, const char* objectPath,
+                  const char* objectIntf, const char* propertyName)
 {
     auto method = bus->new_method_call(
         objectName, objectPath, "org.freedesktop.DBus.Properties", "Get");
@@ -102,7 +102,7 @@ class Service : public Base
     Service(Service&&) = delete;
     Service& operator=(Service&&) = default;
 
-    // TODO: add masked
+    bool masked(bool value) override;
     bool enabled(bool value) override;
     bool running(bool value) override;
 
