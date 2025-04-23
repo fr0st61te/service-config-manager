@@ -310,6 +310,41 @@ bool Service::isRunning()
 std::list<Service> ServiceManager::getServices()
 {
     std::list<Service> _services;
+    std::vector<std::string> settingsPaths;
+
+    auto method =
+        systemBus->new_method_call(objectMapper, objectMapperPath,
+                                   objectMapperInterface, "GetSubTreePaths");
+    method.append(serviceManagerBasePath);
+    // depth 0
+    method.append(0);
+    // array with size 1
+    method.append(std::array<const char*, 1>{settingsInterface});
+
+    try
+    {
+        auto reply = systemBus->call(method);
+        reply.read(settingsPaths);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed to get protocols from phosphor-settingsd");
+        return _services;
+    }
+
+    if (settingsPaths.size() == 0)
+    {
+        lg2::error("Failed to get protocols from phosphor-settingsd");
+        return _services;
+    }
+
+    for (auto& path : settingsPaths)
+    {
+        auto protocol = path.substr(path.rfind("/") + 1);
+        protocols.push_back(protocol);
+        protocolPaths[protocol] = path;
+    }
+
     for (auto& protocol : protocols)
     {
         try

@@ -52,12 +52,12 @@ static constexpr auto systemdBusname = "org.freedesktop.systemd1";
 static constexpr auto systemdPath = "/org/freedesktop/systemd1";
 static constexpr auto systemdInterface = "org.freedesktop.systemd1.Manager";
 
-// Need to make getting protocols from dbus instead of hard coded values.
-// At bmcweb side it should populated too, both sides should be connected about
-// getting right groups/protocols from one place.
-static std::map<std::string, std::string> protocolPaths{
-    {"IPMINET", ipmiNetProtocolPath}, {"SSH", sshProtocolPath}};
-static std::vector<std::string> protocols{"IPMINET", "SSH"};
+static constexpr auto objectMapper = "xyz.openbmc_project.ObjectMapper";
+static constexpr auto objectMapperInterface = "xyz.openbmc_project.ObjectMapper";
+static constexpr auto objectMapperPath = "/xyz/openbmc_project/object_mapper";
+
+static std::map<std::string, std::string> protocolPaths;
+static std::vector<std::string> protocols;
 
 using Base =
     sdbusplus::xyz::openbmc_project::Control::Service::server::Attributes;
