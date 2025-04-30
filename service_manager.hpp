@@ -53,7 +53,8 @@ static constexpr auto systemdPath = "/org/freedesktop/systemd1";
 static constexpr auto systemdInterface = "org.freedesktop.systemd1.Manager";
 
 static constexpr auto objectMapper = "xyz.openbmc_project.ObjectMapper";
-static constexpr auto objectMapperInterface = "xyz.openbmc_project.ObjectMapper";
+static constexpr auto objectMapperInterface =
+    "xyz.openbmc_project.ObjectMapper";
 static constexpr auto objectMapperPath = "/xyz/openbmc_project/object_mapper";
 
 static std::map<std::string, std::string> protocolPaths;
@@ -85,13 +86,13 @@ T getPropertySync(std::shared_ptr<sdbusplus::asio::connection> bus,
 class Service : public Base
 {
   public:
-    Service(std::vector<std::string> _unitNames, bool _sbEnabled,
-            bool _sbMasked, std::string _protocol) :
+    Service(std::vector<std::string> _unitNames, bool _enabled, bool _masked,
+            std::string _protocol) :
 
         Base(static_cast<sdbusplus::bus_t&>(*systemBus),
              (std::string(serviceManagerBasePath) + "/" + _protocol).c_str()),
-        unitNames(std::move(_unitNames)), sbEnabled(_sbEnabled),
-        sbMasked(_sbMasked), protocol(std::move(_protocol))
+        unitNames(std::move(_unitNames)), initialEnabled(_enabled),
+        initialMasked(_masked), protocol(std::move(_protocol))
     {}
 
     Service() = delete;
@@ -108,24 +109,33 @@ class Service : public Base
 
     bool isMasked()
     {
-        return sbMasked;
+        return initialMasked;
     }
 
     bool isEnabled()
     {
-        return sbEnabled;
+        return initialEnabled;
     }
 
     bool isRunning();
 
   private:
     std::vector<std::string> unitNames;
-    bool sbEnabled;
-    bool sbMasked;
+    bool initialEnabled;
+    bool initialMasked;
     std::string protocol;
     std::shared_ptr<sdbusplus::asio::dbus_interface> attributesIface;
 
     void reload();
+
+    void unmaskUnitFiles();
+    void maskUnitFiles();
+
+    void enableUnitFiles();
+    void disableUnitFiles();
+
+    void saveSetting(const char* settingName, bool value,
+                     std::string& protocol);
 };
 
 class ServiceManager
