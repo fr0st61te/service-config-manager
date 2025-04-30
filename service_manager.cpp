@@ -5,116 +5,162 @@ namespace phosphor
 namespace service
 {
 
-bool Service::enabled(bool value)
+void Service::saveSetting(const char* settingName, bool value,
+                          std::string& _protocol)
 {
-    if (Base::enabled() != value)
+    systemBus->async_method_call(
+        [this](boost::system::error_code ec) {
+            if (ec)
+            {
+                lg2::error(
+                    "Failed to save configuration enabled={ENABLED} for service={SERVICE}: {ERR}",
+                    "ENABLED", Base::enabled(), "SERVICE", protocol, "ERR",
+                    ec.message());
+            }
+        },
+        settingsName, _protocol.c_str(), "org.freedesktop.DBus.Properties",
+        "Set", settingsInterface, settingName, std::variant<bool>(value));
+}
+
+void Service::unmaskUnitFiles()
+{
+    for (auto& unitName : unitNames)
+    {
+        lg2::info("Unit {UNIT} will be unmasked...", "UNIT", unitName);
+        auto _reload = unitName == unitNames.at(unitNames.size() - 1);
+        systemBus->async_method_call(
+            [this, _reload](boost::system::error_code ec) {
+                if (ec)
+                {
+                    lg2::error("Failed to unmak service: {ERR}", "ERR",
+                               ec.message());
+                }
+                else
+                {
+                    Base::masked(false);
+                    if (_reload)
+                        reload();
+                }
+            },
+            systemdBusname, systemdPath, systemdInterface, "UnmaskUnitFiles",
+            std::array<const char*, 1>{unitName.c_str()}, false);
+    }
+}
+
+void Service::disableUnitFiles()
+{
+    for (auto& unitName : unitNames)
+    {
+        lg2::info("Unit {UNIT} will be disabled...", "UNIT", unitName);
         systemBus->async_method_call(
             [this](boost::system::error_code ec) {
                 if (ec)
                 {
-                    lg2::error(
-                        "Failed to save configuration enabled={ENABLED} for service={SERVICE}: {ERR}",
-                        "ENABLED", Base::enabled(), "SERVICE", protocol, "ERR",
-                        ec.message());
+                    lg2::error("Failed to disable service: {ERR}", "ERR",
+                               ec.message());
+                }
+                else
+                {
+                    Base::enabled(false);
+                    reload();
                 }
             },
-            settingsName, protocolPaths[protocol].c_str(),
-            "org.freedesktop.DBus.Properties", "Set", settingsInterface,
-            "Enabled", std::variant<bool>(value));
+            systemdBusname, systemdPath, systemdInterface, "DisableUnitFiles",
+            std::array<const char*, 1>{unitName.c_str()}, false);
+    }
+}
+
+void Service::enableUnitFiles()
+{
+    for (auto& unitName : unitNames)
+    {
+        lg2::info("Unit {UNIT} will be enabled...", "UNIT", unitName);
+        auto _reload = unitName == unitNames.at(unitNames.size() - 1);
+        systemBus->async_method_call(
+            [this, _reload](boost::system::error_code ec) {
+                if (ec)
+                {
+                    lg2::error("Failed to enable unit: {ERR}", "ERR",
+                               ec.message());
+                }
+                else
+                {
+                    Base::enabled(true);
+                    if (_reload)
+                        reload();
+                }
+            },
+            systemdBusname, systemdPath, systemdInterface, "EnableUnitFiles",
+            std::array<const char*, 1>{unitName.c_str()}, false, false);
+    }
+}
+
+void Service::maskUnitFiles()
+{
+    for (auto& unitName : unitNames)
+    {
+        lg2::info("Unit {UNIT} will be masked...", "UNIT", unitName);
+        auto _reload = unitName == unitNames.at(unitNames.size() - 1);
+        systemBus->async_method_call(
+            [this, _reload](boost::system::error_code ec) {
+                if (ec)
+                {
+                    lg2::error("Failed to mask unit: {ERR}", "ERR",
+                               ec.message());
+                }
+                else
+                {
+                    Base::masked(true);
+                    if (_reload)
+                        reload();
+                }
+            },
+            systemdBusname, systemdPath, systemdInterface, "MaskUnitFiles",
+            std::array<const char*, 1>{unitName.c_str()}, false, false);
+    }
+}
+
+bool Service::enabled(bool value)
+{
+    if (Base::enabled() != value)
+        saveSetting("Enabled", value, protocolPaths[protocol]);
 
     if (Base::enabled() == value)
         return value;
 
-    if (Base::masked() == true)
+    if (Base::masked())
     {
-        for (auto& unitName : unitNames)
-        {
-            lg2::info("Unit {UNIT} will be unmasked...", "UNIT", unitName);
-            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
-            systemBus->async_method_call(
-                [this, _reload](boost::system::error_code ec) {
-                    if (ec)
-                    {
-                        lg2::error("Failed to unmak service: {ERR}", "ERR",
-                                   ec.message());
-                    }
-                    else
-                    {
-                        Base::masked(false);
-                        if (_reload)
-                            reload();
-                    }
-                },
-                systemdBusname, systemdPath, systemdInterface,
-                "UnmaskUnitFiles", std::array<const char*, 1>{unitName.c_str()},
-                false);
-        }
-
-        systemBus->async_method_call(
-            [this](boost::system::error_code ec) {
-                if (ec)
-                {
-                    lg2::error(
-                        "Failed to save configuration enabled={ENABLED} for service={SERVICE}: {ERR}",
-                        "ENABLED", Base::enabled(), "SERVICE", protocol, "ERR",
-                        ec.message());
-                }
-            },
-            settingsName, protocolPaths[protocol].c_str(),
-            "org.freedesktop.DBus.Properties", "Set", settingsInterface,
-            "Masked", std::variant<bool>(value));
+        unmaskUnitFiles();
+        saveSetting("Masked", false, protocolPaths[protocol]);
     }
 
     if (value)
-    {
-        for (auto& unitName : unitNames)
-        {
-            lg2::info("Unit {UNIT} will be enabled...", "UNIT", unitName);
-            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
-            systemBus->async_method_call(
-                [this, _reload](boost::system::error_code ec) {
-                    if (ec)
-                    {
-                        lg2::error("Failed to enable unit: {ERR}", "ERR",
-                                   ec.message());
-                    }
-                    else
-                    {
-                        Base::enabled(true);
-                        if (_reload)
-                            reload();
-                    }
-                },
-                systemdBusname, systemdPath, systemdInterface,
-                "EnableUnitFiles", std::array<const char*, 1>{unitName.c_str()},
-                false, false);
-        }
-    }
+        enableUnitFiles();
     else
+        disableUnitFiles();
+
+    return value;
+}
+
+bool Service::masked(bool value)
+{
+    if (Base::masked() != value)
+        saveSetting("Masked", value, protocolPaths[protocol]);
+
+    if (Base::masked() == value)
+        return value;
+
+    if (Base::enabled() && value)
     {
-        for (auto& unitName : unitNames)
-        {
-            lg2::info("Unit {UNIT} will be disabled...", "UNIT", unitName);
-            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
-            systemBus->async_method_call(
-                [this, _reload](boost::system::error_code ec) {
-                    if (ec)
-                    {
-                        lg2::error("Failed to disable service: {ERR}", "ERR",
-                                   ec.message());
-                    }
-                    else
-                    {
-                        Base::enabled(false);
-                        if (_reload)
-                            reload();
-                    }
-                },
-                systemdBusname, systemdPath, systemdInterface,
-                "DisableUnitFiles",
-                std::array<const char*, 1>{unitName.c_str()}, false);
-        }
+        disableUnitFiles();
+        saveSetting("Enabled", false, protocolPaths[protocol]);
     }
+
+    if (value)
+        maskUnitFiles();
+    else
+        unmaskUnitFiles();
+
     return value;
 }
 
@@ -152,119 +198,6 @@ bool Service::running(bool value)
             },
             systemdBusname, systemdPath, systemdInterface, action,
             unitName.c_str(), "replace");
-    }
-
-    return value;
-}
-
-bool Service::masked(bool value)
-{
-    if (Base::masked() != value)
-        systemBus->async_method_call(
-            [this](boost::system::error_code ec) {
-                if (ec)
-                {
-                    lg2::error(
-                        "Failed to save configuration enabled={ENABLED} for service={SERVICE}: {ERR}",
-                        "ENABLED", Base::enabled(), "SERVICE", protocol, "ERR",
-                        ec.message());
-                }
-            },
-            settingsName, protocolPaths[protocol].c_str(),
-            "org.freedesktop.DBus.Properties", "Set", settingsInterface,
-            "Masked", std::variant<bool>(value));
-
-    if (Base::masked() == value)
-        return value;
-
-    if (Base::enabled() && value)
-    {
-        for (auto& unitName : unitNames)
-        {
-            lg2::info("Unit {UNIT} will be disabled...", "UNIT", unitName);
-            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
-            systemBus->async_method_call(
-                [this, _reload](boost::system::error_code ec) {
-                    if (ec)
-                    {
-                        lg2::error("Failed to disable service: {ERR}", "ERR",
-                                   ec.message());
-                    }
-                    else
-                    {
-                        Base::enabled(false);
-                        if (_reload)
-                            reload();
-                    }
-                },
-                systemdBusname, systemdPath, systemdInterface,
-                "DisableUnitFiles",
-                std::array<const char*, 1>{unitName.c_str()}, false);
-        }
-
-        systemBus->async_method_call(
-            [this](boost::system::error_code ec) {
-                if (ec)
-                {
-                    lg2::error(
-                        "Failed to save configuration enabled={ENABLED} for service={SERVICE}: {ERR}",
-                        "ENABLED", Base::enabled(), "SERVICE", protocol, "ERR",
-                        ec.message());
-                }
-            },
-            settingsName, protocolPaths[protocol].c_str(),
-            "org.freedesktop.DBus.Properties", "Set", settingsInterface,
-            "Enabled", std::variant<bool>(false));
-    }
-
-    if (value)
-    {
-        for (auto& unitName : unitNames)
-        {
-            lg2::info("Unit {UNIT} will be masked...", "UNIT", unitName);
-            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
-            systemBus->async_method_call(
-                [this, _reload](boost::system::error_code ec) {
-                    if (ec)
-                    {
-                        lg2::error("Failed to mask unit: {ERR}", "ERR",
-                                   ec.message());
-                    }
-                    else
-                    {
-                        Base::masked(true);
-                        if (_reload)
-                            reload();
-                    }
-                },
-                systemdBusname, systemdPath, systemdInterface, "MaskUnitFiles",
-                std::array<const char*, 1>{unitName.c_str()}, false, false);
-        }
-    }
-    else
-    {
-        for (auto& unitName : unitNames)
-        {
-            lg2::info("Unit {UNIT} will be unmasked...", "UNIT", unitName);
-            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
-            systemBus->async_method_call(
-                [this, _reload](boost::system::error_code ec) {
-                    if (ec)
-                    {
-                        lg2::error("Failed to unmak service: {ERR}", "ERR",
-                                   ec.message());
-                    }
-                    else
-                    {
-                        Base::masked(false);
-                        if (_reload)
-                            reload();
-                    }
-                },
-                systemdBusname, systemdPath, systemdInterface,
-                "UnmaskUnitFiles", std::array<const char*, 1>{unitName.c_str()},
-                false);
-        }
     }
 
     return value;
