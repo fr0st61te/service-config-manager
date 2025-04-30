@@ -30,8 +30,9 @@ bool Service::enabled(bool value)
         for (auto& unitName : unitNames)
         {
             lg2::info("Unit {UNIT} will be unmasked...", "UNIT", unitName);
+            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
             systemBus->async_method_call(
-                [this](boost::system::error_code ec) {
+                [this, _reload](boost::system::error_code ec) {
                     if (ec)
                     {
                         lg2::error("Failed to unmak service: {ERR}", "ERR",
@@ -40,7 +41,8 @@ bool Service::enabled(bool value)
                     else
                     {
                         Base::masked(false);
-                        reload();
+                        if (_reload)
+                            reload();
                     }
                 },
                 systemdBusname, systemdPath, systemdInterface,
@@ -68,8 +70,9 @@ bool Service::enabled(bool value)
         for (auto& unitName : unitNames)
         {
             lg2::info("Unit {UNIT} will be enabled...", "UNIT", unitName);
+            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
             systemBus->async_method_call(
-                [this, unitName](boost::system::error_code ec) {
+                [this, _reload](boost::system::error_code ec) {
                     if (ec)
                     {
                         lg2::error("Failed to enable unit: {ERR}", "ERR",
@@ -78,7 +81,8 @@ bool Service::enabled(bool value)
                     else
                     {
                         Base::enabled(true);
-                        reload();
+                        if (_reload)
+                            reload();
                     }
                 },
                 systemdBusname, systemdPath, systemdInterface,
@@ -91,8 +95,9 @@ bool Service::enabled(bool value)
         for (auto& unitName : unitNames)
         {
             lg2::info("Unit {UNIT} will be disabled...", "UNIT", unitName);
+            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
             systemBus->async_method_call(
-                [this](boost::system::error_code ec) {
+                [this, _reload](boost::system::error_code ec) {
                     if (ec)
                     {
                         lg2::error("Failed to disable service: {ERR}", "ERR",
@@ -101,7 +106,8 @@ bool Service::enabled(bool value)
                     else
                     {
                         Base::enabled(false);
-                        reload();
+                        if (_reload)
+                            reload();
                     }
                 },
                 systemdBusname, systemdPath, systemdInterface,
@@ -176,8 +182,9 @@ bool Service::masked(bool value)
         for (auto& unitName : unitNames)
         {
             lg2::info("Unit {UNIT} will be disabled...", "UNIT", unitName);
+            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
             systemBus->async_method_call(
-                [this](boost::system::error_code ec) {
+                [this, _reload](boost::system::error_code ec) {
                     if (ec)
                     {
                         lg2::error("Failed to disable service: {ERR}", "ERR",
@@ -186,7 +193,8 @@ bool Service::masked(bool value)
                     else
                     {
                         Base::enabled(false);
-                        reload();
+                        if (_reload)
+                            reload();
                     }
                 },
                 systemdBusname, systemdPath, systemdInterface,
@@ -214,8 +222,9 @@ bool Service::masked(bool value)
         for (auto& unitName : unitNames)
         {
             lg2::info("Unit {UNIT} will be masked...", "UNIT", unitName);
+            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
             systemBus->async_method_call(
-                [this, unitName](boost::system::error_code ec) {
+                [this, _reload](boost::system::error_code ec) {
                     if (ec)
                     {
                         lg2::error("Failed to mask unit: {ERR}", "ERR",
@@ -224,7 +233,8 @@ bool Service::masked(bool value)
                     else
                     {
                         Base::masked(true);
-                        reload();
+                        if (_reload)
+                            reload();
                     }
                 },
                 systemdBusname, systemdPath, systemdInterface, "MaskUnitFiles",
@@ -236,8 +246,9 @@ bool Service::masked(bool value)
         for (auto& unitName : unitNames)
         {
             lg2::info("Unit {UNIT} will be unmasked...", "UNIT", unitName);
+            auto _reload = unitName == unitNames.at(unitNames.size() - 1);
             systemBus->async_method_call(
-                [this](boost::system::error_code ec) {
+                [this, _reload](boost::system::error_code ec) {
                     if (ec)
                     {
                         lg2::error("Failed to unmak service: {ERR}", "ERR",
@@ -246,7 +257,8 @@ bool Service::masked(bool value)
                     else
                     {
                         Base::masked(false);
-                        reload();
+                        if (_reload)
+                            reload();
                     }
                 },
                 systemdBusname, systemdPath, systemdInterface,
