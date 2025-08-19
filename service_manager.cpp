@@ -135,7 +135,10 @@ bool Service::enabled(bool value)
     }
 
     if (value)
-        enableUnitFiles();
+        if (!isEnabled())
+            enableUnitFiles();
+        else
+            Base::enabled(true);
     else
         disableUnitFiles();
 
@@ -157,7 +160,10 @@ bool Service::masked(bool value)
     }
 
     if (value)
-        maskUnitFiles();
+        if (!isMasked())
+            maskUnitFiles();
+        else
+            Base::masked(true);
     else
         unmaskUnitFiles();
 
@@ -178,16 +184,21 @@ bool Service::running(bool value)
     {
         if (value)
         {
+            Base::running(true);
+            if (value == isRunning())
+                return value;
             action = "StartUnit";
             lg2::info("Unit {UNIT} will be started...", "UNIT", unitName);
-            Base::running(true);
         }
         else
         {
+            Base::running(false);
+            if (value == !isRunning())
+                return value;
             action = "StopUnit";
             lg2::info("Unit {UNIT} will be stopped...", "UNIT", unitName);
-            Base::running(false);
         }
+
         systemBus->async_method_call(
             [unitName](boost::system::error_code ec) {
                 if (ec)
@@ -216,37 +227,82 @@ void Service::reload()
         systemdBusname, systemdPath, systemdInterface, "Reload");
 }
 
+std::string Service::getUnitPath(std::string& unitName)
+{
+    sdbusplus::message::object_path unitNamePathObj;
+    auto method = systemBus->new_method_call(systemdBusname, systemdPath,
+                                             systemdInterface, "GetUnit");
+    method.append(unitName.c_str());
+    sdbusplus::message_t reply;
+
+    reply = systemBus->call(method);
+    reply.read(unitNamePathObj);
+
+    return static_cast<std::string>(unitNamePathObj);
+}
+
 bool Service::isRunning()
 {
     for (auto& unitName : unitNames)
     {
-        sdbusplus::message::object_path unitNamePathObj;
-        auto method = systemBus->new_method_call(systemdBusname, systemdPath,
-                                                 systemdInterface, "GetUnit");
-        method.append(unitName.c_str());
-        sdbusplus::message_t reply;
-
         try
         {
-            reply = systemBus->call(method);
-            reply.read(unitNamePathObj);
+            auto unitNamePath = getUnitPath(unitName);
+            if (unitNamePath.size() > 0)
+            {
+                auto activeState = getPropertySync<std::string>(
+                    systemBus, systemdBusname, unitNamePath.c_str(),
+                    "org.freedesktop.systemd1.Unit", "ActiveState");
+                if (activeState != "active")
+                    return false;
+            }
         }
         catch (const std::exception& e)
         {
-            // Unit is not running and not enabled
+            lg2::error("Failed to get unit path: {ERR}", "ERR", e.what());
+
             return false;
         }
+    }
 
-        auto unitNamePath = static_cast<std::string>(unitNamePathObj);
+    return true;
+}
 
-        if (unitNamePath.size() > 0)
-        {
-            auto activeState = getPropertySync<std::string>(
-                systemBus, systemdBusname, unitNamePath.c_str(),
-                "org.freedesktop.systemd1.Unit", "ActiveState");
-            if (activeState != "active")
-                return false;
-        }
+bool Service::isEnabled()
+{
+    for (auto& unitName : unitNames)
+    {
+        std::string enabledState;
+
+        auto method = systemBus->new_method_call(
+            systemdBusname, systemdPath, systemdInterface, "GetUnitFileState");
+        method.append(unitName.c_str());
+
+        auto reply = systemBus->call(method);
+        reply.read(enabledState);
+
+        if (enabledState != "enabled")
+            return false;
+    }
+
+    return true;
+}
+
+bool Service::isMasked()
+{
+    for (auto& unitName : unitNames)
+    {
+        std::string maskedState;
+
+        auto method = systemBus->new_method_call(
+            systemdBusname, systemdPath, systemdInterface, "GetUnitFileState");
+        method.append(unitName.c_str());
+
+        auto reply = systemBus->call(method);
+        reply.read(maskedState);
+
+        if (maskedState != "masked")
+            return false;
     }
 
     return true;
@@ -321,23 +377,21 @@ ServiceManager::ServiceManager()
     services = getServices();
     for (auto& serv : services)
     {
-        if (serv.isMasked())
+        if (serv.isMaskedDefault())
         {
             serv.masked(true);
             continue;
         }
 
-        if (serv.isEnabled())
+        if (serv.isEnabledDefault())
         {
             serv.enabled(true);
-            if (!serv.isRunning())
-                serv.running(true);
+            serv.running(true);
         }
         else
         {
             serv.enabled(false);
-            if (serv.isRunning())
-                serv.running(false);
+            serv.running(false);
         }
     }
 }
